@@ -673,6 +673,14 @@ class SAMLProviderConfig(ProviderConfig):
         """ Get social auth uid from remote id by prepending idp_slug to the remote id """
         return '{}:{}'.format(self.slug, remote_id)
 
+    def get_setting(self, name):
+        """ Get the value of a setting, or raise KeyError """
+        if self.other_settings:
+            other_settings = json.loads(self.other_settings)
+            assert isinstance(other_settings, dict), "other_settings should be a JSON object (dictionary)"
+            return other_settings[name]
+        raise KeyError
+
     def get_config(self):
         """
         Return a SAMLIdentityProvider instance for use by SAMLAuthBackend.
