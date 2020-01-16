@@ -27,6 +27,7 @@ from lms.djangoapps.discussion import django_comment_client
 from openedx.core.djangoapps.catalog.models import CatalogIntegration
 from openedx.core.djangoapps.lang_pref.api import get_closest_released_language
 from openedx.core.djangoapps.models.course_details import CourseDetails
+from openedx.core.lib.cache_utils import request_cached
 from static_replace.models import AssetBaseUrlConfig
 from xmodule import block_metadata_utils, course_metadata_utils
 from xmodule.course_module import DEFAULT_START_DATE, CourseDescriptor
@@ -319,6 +320,7 @@ class CourseOverview(TimeStampedModel):
         return modulestore().has_course(course_id)
 
     @classmethod
+    @request_cached()
     def get_from_id(cls, course_id):
         """
         Load a CourseOverview object for a given course ID.
