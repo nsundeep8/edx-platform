@@ -30,6 +30,12 @@ from django.utils.translation import ugettext as _
                         <div class="date-content">
                             <div class="timeline-date ">
                                 ${block.date.strftime(block.date_format)}
+                                % if active:
+                                    <span class="pill due">${_("Due Today")}</span>
+                                % endif
+                                % if not course.self_paced:
+                                    <span class="pill verified">${_("Verified Only")}</span>
+                                % endif
                             </div>
                             <div class="timeline-title ">
                                 ${block.title}
