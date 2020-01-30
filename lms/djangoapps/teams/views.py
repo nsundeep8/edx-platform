@@ -1360,7 +1360,7 @@ class MembershipDetailView(ExpandableFieldViewMixin, GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class MembershipBulkManagementView(ExpandableFieldViewMixin, GenericAPIView):
+class MembershipBulkManagementView(GenericAPIView):
     """
     View for uploading and downloading team membership CSVs.
     """
