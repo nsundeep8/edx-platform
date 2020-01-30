@@ -37,16 +37,10 @@ class TeamMembershipImportManager(object):
     """
 
     def __init__(self, course):
-        # the list of validation errors
         self.validation_errors = []
-        self.teamset_names = []
-        # this is a dictionary of dictionaries that ensures that a student can belong to
-        # one and only one team in a teamset
-        self.user_ids_by_teamset_index = {}
-        # dictionary that matches column index to a teamset name. Used when creating teams to get the right teamset
-        self.teamset_name_by_index = {}
-        # the currently selected user
-        self.user = ''
+        self.teamset_ids = []
+        self.user_ids_by_teamset_id = {}
+        self.teamset_ids = []
         self.number_of_record_added = 0
         # stores the course module that will be used to get course metadata
         self.course_module = ''
@@ -65,73 +59,65 @@ class TeamMembershipImportManager(object):
         """
         Assigns team membership based on the content of an uploaded CSV file.
         Returns true if there were no issues.
-
-        Arguments:
-            course (CourseDescriptor): Course module for which team membership needs to be set.
         """
         self.course_module = modulestore().get_course(self.course.id)
-        all_rows = [row for row in csv.reader(input_file.read().decode('utf-8').splitlines())]
-        header_row = all_rows[0]
-        if self.validate_teamsets(header_row):
+        reader = csv.DictReader((line.decode('utf-8').strip() for line in input_file.readlines()))
+
+        self.teamset_ids = reader.fieldnames[2:]
+        row_dictionaries = []
+        if self.validate_teamsets():
             # process student rows:
-            for i in range(1, len(all_rows)):
-                row_data = all_rows[i]
-                username = row_data[0]
+            for row in reader:
+                username = row['user']
                 if not username:
                     continue
-                #if row_data[0]:  # avoid processing rows with empty user names (excel copy and paste)
                 user = self.get_user(username)
                 if user is None:
                     continue
                 if self.validate_user_enrolled_in_course(user) is False:
-                    row_data[0] = None
+                    row['user'] = None
                     continue
+                row['user'] = user
 
-                row_data[0] = user
-
-                if self.validate_user_to_team(row_data) is False:
+                if self.validate_user_to_team(row) is False:
                     return False
+                row_dictionaries.append(row)
 
             if not self.validation_errors:
-                for i in range(1, len(all_rows)):
-                    self.add_user_to_team(all_rows[i])
+                for row in row_dictionaries:
+                    self.add_user_to_team(row)
                 return True
             else:
                 return False
         return False
 
-    def validate_teamsets(self, header_row):
+    def validate_teamsets(self):
         """
         Validates team set names. Returns true if there are no errors.
         The following conditions result in errors:
         Teamset does not exist
-        Also populates teh teamset_names_list.
-        header_row is the list representation of the header row of the input file. It will have
-        the following format:
-        user, mode, <teamset_1_name>,...,<teamset_n_name>
-        where teamset_X_name must be a valid name of an existing teamset.
+        Teamset id is duplicated
+        Also populates the teamset_names_list.
+        header_row is the list of teamset_ids
         """
         teamset_ids = {ts.teamset_id for ts in self.course_module.teams_configuration.teamsets}
-        for i in range(2, len(header_row)):
-            if not header_row[i] in teamset_ids:
-                self.validation_errors.append("Teamset named " + header_row[i] + " does not exist.")
+        dupe_set = set()
+        for teamset_id in self.teamset_ids:
+            if teamset_id in dupe_set:
+                self.validation_errors.append("Teamset with id " + teamset_id + " is duplicated.")
                 return False
-            self.teamset_names.append(header_row[i])
-            self.user_ids_by_teamset_index[i] = {m.user_id for m in CourseTeamMembership.objects.filter
-                                                 (team__course_id=self.course.id, team__topic_id=header_row[i])}
-            self.teamset_name_by_index[i] = header_row[i]
+            dupe_set.add(teamset_id)
+            if teamset_id not in teamset_ids:
+                self.validation_errors.append("Teamset with id " + teamset_id + " does not exist.")
+                return False
+            self.user_ids_by_teamset_id[teamset_id] = {m.user_id for m in CourseTeamMembership.objects.filter
+                                                       (team__course_id=self.course.id, team__topic_id=teamset_id)}
         return True
 
     def validate_user_enrolled_in_course(self, user):
         """
         Invalid states:
             user not enrolled in course
-        Validates user row entry. Returns true if there are no errors.
-        user_row is the list representation of an input row. It will have the following formta:
-        use_id, enrollment_mode, <Team_Name_1>,...,<Team_Name_n>
-        Team_Name_x are optional and can be a sparse list i.e:
-        andrew,masters,team1,,team3
-        joe,masters,,team2,team3
         """
         if not CourseEnrollment.is_enrolled(user, self.course.id):
             self.validation_errors.append('User ' + user.username + ' is not enrolled in this course.')
@@ -139,33 +125,30 @@ class TeamMembershipImportManager(object):
 
         return True
 
-    def validate_user_to_team(self, user_row):
+    def validate_user_to_team(self, row):
         """
         Validates a user entry relative to an existing team.
-        user_row is the list representation of an input row. It will have the following formta:
-        user_row[0] will contain an edX user object, followed by:
-        enrollment_mode, <Team_Name_1>,...,<Team_Name_n>
-        Team_Name_x are optional and can be a sparse list i.e:
+        row is a dictionary where key is column name and value is the row value
         [andrew],masters,team1,,team3
         [joe],masters,,team2,team3
         """
-        for i in range(2, len(user_row)):
-            user = user_row[0]
-            team_name = user_row[i]
+        user = row['user']
+        for teamset_id in self.teamset_ids:
+            team_name = row[teamset_id]
             if not team_name:
                 continue
             try:
                 # checks for a team inside a specific team set. This way team names can be duplicated across
                 # teamsets
-                team = CourseTeam.objects.get(name=team_name, topic_id=self.teamset_name_by_index[i])
+                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id)
             except CourseTeam.DoesNotExist:
                 # if a team doesn't exists, the validation doesn't apply to it.
-                all_teamset_user_ids = self.user_ids_by_teamset_index[i]
+                all_teamset_user_ids = self.user_ids_by_teamset_id[teamset_id]
                 error_message = 'User {} is already on a teamset'.format(user)
                 if user.id in all_teamset_user_ids and self.add_error_and_check_if_max_exceeded(error_message):
                     return False
                 else:
-                    self.user_ids_by_teamset_index[i].add(user.id)
+                    self.user_ids_by_teamset_id[teamset_id].add(user.id)
                     continue
             max_team_size = self.course_module.teams_configuration.default_max_team_size
             if max_team_size is not None and team.users.count() >= max_team_size:
@@ -191,51 +174,50 @@ class TeamMembershipImportManager(object):
     def add_user_to_team(self, user_row):
         """
         Creates a CourseTeamMembership entry - i.e: a relationship between a user and a team.
-        user_row is the list representation of an input row. It will have the following formta:
-        use_id, enrollment_mode, <Team_Name_1>,...,<Team_Name_n>
-        Team_Name_x are optional and can be a sparse list i.e:
-        andrew,masters,team1,,team3
+        user_row is a dictionary where key is column name and value is the row value.
+        {'mode': ' masters','topic_0': '','topic_1': 'team 2','topic_2': None,'user': <user_obj>}
+         andrew,masters,team1,,team3
         joe,masters,,team2,team3
         """
-        user = user_row[0]
-        for i in range(2, len(user_row)):
-            team_name = user_row[i]
-            if team_name:
-                try:
-                    # checks for a team inside a specific team set. This way team names can be duplicated across
-                    # teamsets
-                    team = CourseTeam.objects.get(name=team_name, topic_id=self.teamset_name_by_index[i])
-                except CourseTeam.DoesNotExist:
-                    team = CourseTeam.create(
-                        name=team_name,
-                        course_id=self.course.id,
-                        description='Import from csv',
-                        topic_id=self.teamset_name_by_index[i]
-                    )
-                    team.save()
-                try:
-                    team.add_user(user)
-                    emit_team_event(
-                        'edx.team.learner_added',
-                        team.course_id,
-                        {
-                            'team_id': team.team_id,
-                            'user_id': user.id,
-                            'add_method': 'added_by_another_user'
-                        }
-                    )
-                except AlreadyOnTeamInCourse:
-                    if self.add_error_and_check_if_max_exceeded(
-                        'The user ' + user.username + ' is already a member of a team inside teamset '
-                        + team.topic_id + ' in this course.'
-                    ):
-                        return False
-                self.number_of_record_added += 1
+        user = user_row['user']
+        for teamset_id in self.teamset_ids:
+            team_name = user_row[teamset_id]
+            if not team_name:
+                continue
+            try:
+                # checks for a team inside a specific team set. This way team names can be duplicated across
+                # teamsets
+                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id)
+            except CourseTeam.DoesNotExist:
+                team = CourseTeam.create(
+                    name=team_name,
+                    course_id=self.course.id,
+                    description='Import from csv',
+                    topic_id=teamset_id
+                )
+                team.save()
+            try:
+                team.add_user(user)
+                emit_team_event(
+                    'edx.team.learner_added',
+                    team.course_id,
+                    {
+                        'team_id': team.team_id,
+                        'user_id': user.id,
+                        'add_method': 'added_by_another_user'
+                    }
+                )
+            except AlreadyOnTeamInCourse:
+                if self.add_error_and_check_if_max_exceeded(
+                    'The user ' + user.username + ' is already a member of a team inside teamset '
+                    + team.topic_id + ' in this course.'
+                ):
+                    return False
+            self.number_of_record_added += 1
 
     def get_user(self, user_name):
         """
-        Resets the class user object variable from the provided username/email/user locator.
-        If a matching user is not found, throws exception and stops processing.
+        Gets the user object from user_name/email/locator
         user_name: the user_name/email/user locator
         """
         try:
