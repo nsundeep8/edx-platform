@@ -49,6 +49,7 @@ def get_course_block_access_transformers(user):
     if has_individual_student_override_provider():
         course_block_access_transformers += [load_override_data.OverrideDataTransformer(user)]
 
+    print('get_course_block_access_transformers: 1')
     return course_block_access_transformers
 
 

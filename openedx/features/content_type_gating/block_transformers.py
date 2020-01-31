@@ -25,7 +25,6 @@ class ContentTypeGateTransformer(BlockStructureTransformer):
         Unique identifier for the transformer's class;
         same identifier used in setup.py.
         """
-        print('Jeff: In name')
         return "content_type_gate"
 
     @classmethod
@@ -38,12 +37,12 @@ class ContentTypeGateTransformer(BlockStructureTransformer):
 
     def transform(self, usage_info, block_structure):
         print('transform: 1')
-        if not ContentTypeGatingConfig.enabled_for_enrollment(
-            user=usage_info.user,
-            course_key=usage_info.course_key,
-        ):
-            print('transform: 2')
-            return
+        # if not ContentTypeGatingConfig.enabled_for_enrollment(
+        #     user=usage_info.user,
+        #     course_key=usage_info.course_key,
+        # ):
+        #     print('transform: 2')
+        #     return
 
         print('transform: 3')
         for block_key in block_structure.topological_traversal():
@@ -52,16 +51,16 @@ class ContentTypeGateTransformer(BlockStructureTransformer):
             weight_not_zero = block_structure.get_xblock_field(block_key, 'weight') != 0
             problem_eligible_for_content_gating = graded and has_score and weight_not_zero
             print('transform: 4')
-            if problem_eligible_for_content_gating:
-                print('transform: 5')
-                current_access = block_structure.get_xblock_field(block_key, 'group_access')
-                if current_access is None:
-                    print('transform: 6')
-                    current_access = {}
-                print('current_access: {}'.format(current_access))
-                current_access.setdefault(
-                    CONTENT_GATING_PARTITION_ID,
-                    [settings.CONTENT_TYPE_GATE_GROUP_IDS['full_access']]
-                )
-                print('current_access.set_default: {}'.format(current_access))
-                block_structure.override_xblock_field(block_key, 'group_access', current_access)
+            # if problem_eligible_for_content_gating:
+            print('transform: 5')
+            current_access = block_structure.get_xblock_field(block_key, 'group_access')
+            if current_access is None:
+                print('transform: 6')
+                current_access = {}
+            print('current_access: {}'.format(current_access))
+            current_access.setdefault(
+                CONTENT_GATING_PARTITION_ID,
+                [settings.CONTENT_TYPE_GATE_GROUP_IDS['full_access']]
+            )
+            print('current_access.set_default: {}'.format(current_access))
+            block_structure.override_xblock_field(block_key, 'group_access', current_access)

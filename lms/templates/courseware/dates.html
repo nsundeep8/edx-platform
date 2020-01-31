@@ -27,7 +27,7 @@ from openedx.core.djangolib.markup import HTML, Text
                 </h2>
                 % for block in course_date_blocks:
                     <% active = 'active' if block.date and (block.date.strftime(block.date_format) == block.current_time.strftime(block.date_format)) else '' %>
-                    <% verified = type(block) in (CourseAssignmentDate, VerificationDeadlineDate, VerifiedUpgradeDeadlineDate) %>
+                    <% verified = type(block) in (VerificationDeadlineDate, VerifiedUpgradeDeadlineDate) or (hasattr(block, 'requires_full_access') and block.requires_full_access) %>
                     <div class="timeline-item ${active}">
                         <div class="date-circle ${active}"></div>
                         <div class="date-content">

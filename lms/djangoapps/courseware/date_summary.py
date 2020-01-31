@@ -336,6 +336,7 @@ class CourseAssignmentDate(DateSummary):
         self.assignment_link = None
         self.assignment_link_text = None
         self.assignment_title = None
+        self.assignment_requires_full_access = None
 
     @property
     def date(self):
@@ -369,6 +370,14 @@ class CourseAssignmentDate(DateSummary):
     @title.setter
     def title(self, title):
         self.assignment_title = title
+
+    @property
+    def requires_full_access(self):
+        return self.assignment_requires_full_access
+
+    @requires_full_access.setter
+    def requires_full_access(self, requires_full_access):
+        self.assignment_requires_full_access = requires_full_access
 
 
 class CertificateAvailableDate(DateSummary):

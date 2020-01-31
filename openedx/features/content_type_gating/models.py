@@ -119,6 +119,7 @@ class ContentTypeGatingConfig(StackedConfigurationModel):
             user = enrollment.user
 
         course_masquerade = get_course_masquerade(user, course_key)
+        print('course_masquerade: {}'.format(course_masquerade))
         no_masquerade = course_masquerade is None
         student_masquerade = is_masquerading_as_specific_student(user, course_key)
         user_variable_represents_correct_user = (no_masquerade or student_masquerade)

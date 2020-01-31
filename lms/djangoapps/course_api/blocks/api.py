@@ -72,6 +72,7 @@ def get_blocks(
     include_gated_sections = 'show_gated_sections' in requested_fields
 
     if user is not None:
+        print('get_blocks: 1')
         transformers += course_blocks_api.get_course_block_access_transformers(user)
         transformers += [
             MilestonesAndSpecialExamsTransformer(
@@ -101,6 +102,7 @@ def get_blocks(
         transformers += [BlockCompletionTransformer()]
 
     # transform
+    print('usage_key: {}'.format(usage_key))
     blocks = course_blocks_api.get_course_blocks(user, usage_key, transformers)
 
     # filter blocks by types
