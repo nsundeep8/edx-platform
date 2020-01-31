@@ -60,8 +60,7 @@ class TeamMembershipImportManager(object):
         Returns true if there were no issues.
         """
         self.course_module = modulestore().get_course(self.course.id)
-        reader = csv.DictReader((line.decode('utf-8').strip() for line in input_file.readlines()))
-
+        reader = csv.DictReader((line.decode('utf-8-sig').strip() for line in input_file.readlines()))
         self.teamset_ids = reader.fieldnames[2:]
         row_dictionaries = []
         if self.validate_teamsets():
@@ -161,6 +160,7 @@ class TeamMembershipImportManager(object):
                 )
                 if self.add_error_and_check_if_max_exceeded(error_message):
                     return False
+        return True
 
     def add_error_and_check_if_max_exceeded(self, error_message):
         """
