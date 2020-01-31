@@ -5,7 +5,6 @@ CSV processing and generation utilities for Teams LMS app.
 import csv
 from django.contrib.auth.models import User
 from student.models import CourseEnrollment
-from xmodule.modulestore.django import modulestore
 
 from lms.djangoapps.teams.models import CourseTeam, CourseTeamMembership
 from .utils import emit_team_event
@@ -41,11 +40,11 @@ class TeamMembershipImportManager(object):
         self.user_ids_by_teamset_id = {}
         self.teamset_ids = []
         self.number_of_record_added = 0
-        # stores the course module that will be used to get course metadata
-        self.course_module = ''
         # stores the course for which we are populating teams
         self.course = course
         self.max_errors = 0
+        self.existing_course_team_memberships = {}
+        self.existing_course_teams = {}
 
     @property
     def import_succeeded(self):
@@ -59,35 +58,57 @@ class TeamMembershipImportManager(object):
         Assigns team membership based on the content of an uploaded CSV file.
         Returns true if there were no issues.
         """
-        self.course_module = modulestore().get_course(self.course.id)
         reader = csv.DictReader((line.decode('utf-8-sig').strip() for line in input_file.readlines()))
         self.teamset_ids = reader.fieldnames[2:]
         row_dictionaries = []
-        if self.validate_teamsets():
-            # process student rows:
-            for row in reader:
-                username = row['user']
-                if not username:
-                    continue
-                user = self.get_user(username)
-                if user is None:
-                    continue
-                if not self.validate_user_enrolled_in_course(user):
-                    row['user'] = None
-                    continue
-                row['user'] = user
-
-                if not self.validate_user_assignment_to_team_and_teamset(row):
-                    return False
-                row_dictionaries.append(row)
-
-            if not self.validation_errors:
-                for row in row_dictionaries:
-                    self.add_user_to_team(row)
-                return True
-            else:
+        csv_usernames = set()
+        if not self.validate_teamsets():
+            return False
+        self.load_user_ids_by_teamset_id()
+        self.load_course_team_memberships()
+        self.load_course_teams()
+        # process student rows:
+        for row in reader:
+            username = row['user']
+            if not username:
+                continue
+            if not self.check_for_duplicate_usernames_on_input(username, csv_usernames):
                 return False
-        return False
+            csv_usernames.add(username)
+            user = self.get_user(username)
+            if user is None:
+                continue
+            if not self.validate_user_enrolled_in_course(user):
+                row['user'] = None
+                continue
+            row['user'] = user
+
+            if not self.validate_user_assignment_to_team_and_teamset(row):
+                return False
+            row_dictionaries.append(row)
+
+        if not self.validation_errors:
+            for row in row_dictionaries:
+                self.add_user_to_team(row)
+            return True
+        else:
+            return False
+
+    def load_course_team_memberships(self):
+        """
+        Caches existing team memberships by (user_id, teamset_id)
+        """
+        for membership in CourseTeamMembership.get_memberships(course_ids=[self.course.id]):
+            user_id = membership.user_id
+            teamset_id = membership.team.topic_id
+            self.existing_course_team_memberships[(user_id, teamset_id)] = membership.team.id
+
+    def load_course_teams(self):
+        """
+        Caches existing course teams by (team_name, topic_id)
+        """
+        for team in CourseTeam.objects.filter(course_id=self.course.id):
+            self.existing_course_teams[(team.name, team.topic_id)] = team
 
     def validate_teamsets(self):
         """
@@ -98,7 +119,7 @@ class TeamMembershipImportManager(object):
         Also populates the teamset_names_list.
         header_row is the list of teamset_ids
         """
-        teamset_ids = {ts.teamset_id for ts in self.course_module.teams_configuration.teamsets}
+        teamset_ids = {ts.teamset_id for ts in self.course.teams_configuration.teamsets}
         dupe_set = set()
         for teamset_id in self.teamset_ids:
             if teamset_id in dupe_set:
@@ -108,9 +129,16 @@ class TeamMembershipImportManager(object):
             if teamset_id not in teamset_ids:
                 self.validation_errors.append("Teamset with id " + teamset_id + " does not exist.")
                 return False
-            self.user_ids_by_teamset_id[teamset_id] = {m.user_id for m in CourseTeamMembership.objects.filter
-                                                       (team__course_id=self.course.id, team__topic_id=teamset_id)}
         return True
+
+    def load_user_ids_by_teamset_id(self):
+        for teamset_id in self.teamset_ids:
+            self.user_ids_by_teamset_id[teamset_id] = {
+                membership.user_id for membership in
+                CourseTeamMembership.objects.filter(
+                    team__course_id=self.course.id, team__topic_id=teamset_id
+                )
+            }
 
     def validate_user_enrolled_in_course(self, user):
         """
@@ -121,6 +149,16 @@ class TeamMembershipImportManager(object):
             self.validation_errors.append('User ' + user.username + ' is not enrolled in this course.')
             return False
 
+        return True
+
+    def check_for_duplicate_usernames_on_input(self, username, usernames_found_so_far):
+        """
+        Ensures that username exists only once in an input file
+        """
+        if username in usernames_found_so_far:
+            error_message = 'Username {} was found more than once in input file.'.format(username)
+            if self.add_error_and_check_if_max_exceeded(error_message):
+                return False
         return True
 
     def validate_user_assignment_to_team_and_teamset(self, row):
@@ -138,8 +176,8 @@ class TeamMembershipImportManager(object):
             try:
                 # checks for a team inside a specific team set. This way team names can be duplicated across
                 # teamsets
-                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id, course_id=self.course.id)
-            except CourseTeam.DoesNotExist:
+                team = self.existing_course_teams[(team_name, teamset_id)]
+            except KeyError:
                 # if a team doesn't exists, the validation doesn't apply to it.
                 all_teamset_user_ids = self.user_ids_by_teamset_id[teamset_id]
                 error_message = 'The user {0} is already a member of a team inside teamset {1} in this course.'.format(
@@ -150,11 +188,12 @@ class TeamMembershipImportManager(object):
                 else:
                     self.user_ids_by_teamset_id[teamset_id].add(user.id)
                     continue
-            max_team_size = self.course_module.teams_configuration.default_max_team_size
+            max_team_size = self.course.teams_configuration.default_max_team_size
             if max_team_size is not None and team.users.count() >= max_team_size:
                 if self.add_error_and_check_if_max_exceeded('Team ' + team.team_id + ' is already full.'):
                     return False
-            if CourseTeamMembership.user_in_team_for_course(user, self.course.id, team.topic_id):
+
+            if (user.id, team.topic_id) in self.existing_course_team_memberships:
                 error_message = 'The user {0} is already a member of a team inside teamset {1} in this course.'.format(
                     user.username, team.topic_id
                 )
@@ -185,11 +224,7 @@ class TeamMembershipImportManager(object):
             team_name = user_row[teamset_id]
             if not team_name:
                 continue
-            try:
-                # checks for a team inside a specific team set. This way team names can be duplicated across
-                # teamsets
-                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id, course_id=self.course.id)
-            except CourseTeam.DoesNotExist:
+            if (team_name, teamset_id) not in self.existing_course_teams:
                 team = CourseTeam.create(
                     name=team_name,
                     course_id=self.course.id,
