@@ -392,7 +392,7 @@ def get_course_info_section(request, user, course, section_key):
     return html
 
 
-def get_course_date_blocks(course, user, request=None):
+def get_course_date_blocks(course, user, request=None, include_past_dates=False):
     """
     Return the list of blocks to display on the course info page,
     sorted by date.
@@ -408,9 +408,9 @@ def get_course_date_blocks(course, user, request=None):
         block_classes.insert(0, CertificateAvailableDate)
 
     blocks = [cls(course, user) for cls in block_classes]
-    blocks.extend(get_course_assignment_due_dates(course, user, request, num_return=2))
+    blocks.extend(get_course_assignment_due_dates(course, user, request, include_past_dates=include_past_dates))
 
-    return sorted((b for b in blocks if b.is_enabled), key=date_block_key_fn)
+    return sorted((b for b in blocks if b.is_enabled or include_past_dates), key=date_block_key_fn)
 
 
 def date_block_key_fn(block):
@@ -423,7 +423,7 @@ def date_block_key_fn(block):
     return block.date
 
 
-def get_course_assignment_due_dates(course, user, request, num_return=None):
+def get_course_assignment_due_dates(course, user, request, num_return=None, include_past_dates=False):
     """
     Returns a list of assignment (at the subsection/sequential level) due date
     blocks for the given course. Will return num_return results or all results
@@ -435,7 +435,9 @@ def get_course_assignment_due_dates(course, user, request, num_return=None):
     for (block_key, date_type), date in all_course_dates.items():
         if date_type == 'due':
             item = store.get_item(block_key)
+            print('type(item): {}'.format(type(item)))
             if item.category == 'sequential' and item.graded:
+                print('Access: {}'.format(item.group_access))
                 date_block = CourseAssignmentDate(course, user)
                 date_block.date = date
                 date_block.title = item.display_name
@@ -449,9 +451,13 @@ def get_course_assignment_due_dates(course, user, request, num_return=None):
                     date_block.link_text = _('Go to assignment')
 
                 date_blocks.append(date_block)
-    date_blocks = sorted((b for b in date_blocks if b.is_enabled), key=date_block_key_fn)
+    date_blocks = sorted((b for b in date_blocks if include_past_dates), key=date_block_key_fn)
+
+    for b in date_blocks:
+        print("Date block: {}".format(b))
     if num_return:
         return date_blocks[:num_return]
+
     return date_blocks
 
 

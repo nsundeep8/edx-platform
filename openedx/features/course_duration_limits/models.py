@@ -98,14 +98,17 @@ class CourseDurationLimitConfig(StackedConfigurationModel):
         """
 
         if user is None or course_key is None:
+            print('enabled_for_enrollment: 1')
             raise ValueError('Both user and course_key must be specified if no enrollment is provided')
 
         enrollment = CourseEnrollment.get_enrollment(user, course_key, ['fbeenrollmentexclusion'])
 
         if user is None and enrollment is not None:
+            print('enabled_for_enrollment: 2')
             user = enrollment.user
 
         if user and user.id:
+            print('enabled_for_enrollment: 3')
             course_masquerade = get_course_masquerade(user, course_key)
             if course_masquerade:
                 if cls.has_full_access_role_in_masquerade(user, course_key, course_masquerade):
@@ -119,6 +122,7 @@ class CourseDurationLimitConfig(StackedConfigurationModel):
 
         # check if user is in holdback
         if (no_masquerade or student_masquerade) and is_in_holdback(user, enrollment):
+            print('enabled_for_enrollment: 4')
             return False
 
         not_student_masquerade = is_masquerading and not student_masquerade
@@ -130,13 +134,17 @@ class CourseDurationLimitConfig(StackedConfigurationModel):
         # When masquerading as a specific learner, course duration limits
         # will be on if they are currently on for the learner.
         if enrollment is None or not_student_masquerade:
+            print('Enrollment: {}'.format(enrollment))
+            print('enabled_for_enrollment: 5')
             # we bypass enabled_for_course here and use enabled_as_of_datetime directly
             # because the correct_modes_for_fbe for FBE check contained in enabled_for_course
             # is redundant with checks done upstream of this code
             target_datetime = timezone.now()
         else:
+            print('enabled_for_enrollment: 6')
             target_datetime = enrollment.created
         current_config = cls.current(course_key=course_key)
+        print('current_config: {}'.format(current_config))
         return current_config.enabled_as_of_datetime(target_datetime=target_datetime)
 
     @classmethod

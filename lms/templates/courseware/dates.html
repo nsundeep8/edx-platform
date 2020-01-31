@@ -3,6 +3,8 @@
 <%namespace name='static' file='/static_content.html'/>
 <%!
 from django.utils.translation import ugettext as _
+from lms.djangoapps.courseware.date_summary import CourseAssignmentDate, VerificationDeadlineDate, VerifiedUpgradeDeadlineDate
+from openedx.core.djangolib.markup import HTML, Text
 %>
 
 <%block name="bodyclass">view-in-course view-progress</%block>
@@ -24,17 +26,20 @@ from django.utils.translation import ugettext as _
                     ${_("Important Dates")}
                 </h2>
                 % for block in course_date_blocks:
-                    <% active='active'if block.date.strftime(block.date_format) == block.current_time.strftime(block.date_format) else '' %>
+                    <% active = 'active' if block.date and (block.date.strftime(block.date_format) == block.current_time.strftime(block.date_format)) else '' %>
+                    <% verified = type(block) in (CourseAssignmentDate, VerificationDeadlineDate, VerifiedUpgradeDeadlineDate) %>
                     <div class="timeline-item ${active}">
                         <div class="date-circle ${active}"></div>
                         <div class="date-content">
                             <div class="timeline-date ">
-                                ${block.date.strftime(block.date_format)}
-                                % if active:
-                                    <span class="pill due">${_("Due Today")}</span>
-                                % endif
-                                % if not course.self_paced:
-                                    <span class="pill verified">${_("Verified Only")}</span>
+                                % if block.date:
+                                    ${block.date.strftime(block.date_format)}
+                                    % if active:
+                                        <span class="pill due">${_("Due Today")}</span>
+                                    % endif
+                                    % if verified:
+                                        <span class="pill verified">${_("Verified Only")}</span>
+                                    % endif
                                 % endif
                             </div>
                             <div class="timeline-title ">
@@ -42,6 +47,14 @@ from django.utils.translation import ugettext as _
                             </div>
                             <div class="timeline-description">
                                 ${block.description}
+                                % if verified and verified_upgrade_link:
+                                    ${Text(_('{span_open}{a_open}Upgrade{a_close} to a Verified Certificate{span_close} for full access.')).format(
+                                        span_open=HTML('<span class="upgrade-message">'),
+                                        a_open=HTML('<a href={link}>'.format(link=verified_upgrade_link)),
+                                        a_close=HTML('</a>'),
+                                        span_close=HTML('</span>')
+                                    )}
+                                % endif
                             </div>
                         </div>
                     </div>

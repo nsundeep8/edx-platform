@@ -66,6 +66,7 @@ from lms.djangoapps.courseware.courses import (
     sort_by_announcement,
     sort_by_start_date
 )
+from lms.djangoapps.courseware.date_summary import verified_upgrade_deadline_link
 from lms.djangoapps.courseware.masquerade import setup_masquerade
 from lms.djangoapps.courseware.model_data import FieldDataCache
 from lms.djangoapps.courseware.models import BaseStudentModuleHistory, StudentModule
@@ -1026,13 +1027,12 @@ def dates(request, course_id):
 
     course_key = CourseKey.from_string(course_id)
     course = get_course_with_access(request.user, 'load', course_key, check_if_enrolled=False)
-    course_date_blocks = get_course_date_blocks(course, request.user, request)
-    for block in course_date_blocks:
-        print('Block: {}'.format(block))
+    course_date_blocks = get_course_date_blocks(course, request.user, request, include_past_dates=True)
 
     context = {
         'course': course,
-        'course_date_blocks': [block for block in course_date_blocks if block.title != 'current_datetime']
+        'course_date_blocks': [block for block in course_date_blocks if block.title != 'current_datetime'],
+        'verified_upgrade_link': verified_upgrade_deadline_link(request.user, course=course)
     }
 
     return render_to_response('courseware/dates.html', context)

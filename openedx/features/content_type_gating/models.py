@@ -64,25 +64,33 @@ class ContentTypeGatingConfig(StackedConfigurationModel):
         The gate will not appear if the masquerade user has any of the following roles:
         Staff, Instructor, Beta Tester, Forum Community TA, Forum Group Moderator, Forum Moderator, Forum Administrator
         """
+        print('has_full_access_role_in_masquerade: 1')
         if student_masquerade:
+            print('has_full_access_role_in_masquerade: 2')
             # If a request is masquerading as a specific user, the user variable will represent the correct user.
             if user and user.id and has_staff_roles(user, course_key):
+                print('has_full_access_role_in_masquerade: 3')
                 return True
         elif user_partition:
+            print('has_full_access_role_in_masquerade: 4')
             # If the current user is masquerading as a generic student in a specific group,
             # then return the value based on that group.
             masquerade_group = get_masquerading_user_group(course_key, user, user_partition)
             if masquerade_group is None:
+                print('has_full_access_role_in_masquerade: 5')
                 audit_mode_id = settings.COURSE_ENROLLMENT_MODES.get(CourseMode.AUDIT, {}).get('id')
                 # We are checking the user partition id here because currently content
                 # cannot have both the enrollment track partition and content gating partition
                 # configured simultaneously. We may change this in the future and allow
                 # configuring both partitions on content and selecting both partitions in masquerade.
                 if course_masquerade.user_partition_id == ENROLLMENT_TRACK_PARTITION_ID:
+                    print('has_full_access_role_in_masquerade: 6')
                     return course_masquerade.group_id != audit_mode_id
             elif masquerade_group is FULL_ACCESS:
+                print('has_full_access_role_in_masquerade: 7')
                 return True
             elif masquerade_group is LIMITED_ACCESS:
+                print('has_full_access_role_in_masquerade: 8')
                 return False
 
     @classmethod
@@ -101,11 +109,13 @@ class ContentTypeGatingConfig(StackedConfigurationModel):
             course_key: The CourseKey of the course being queried.
         """
         if user is None or course_key is None:
+            print('enabled_for_enrollment: 1')
             raise ValueError('Both user and course_key must be specified if no enrollment is provided')
 
         enrollment = CourseEnrollment.get_enrollment(user, course_key, ['fbeenrollmentexclusion'])
 
         if user is None and enrollment is not None:
+            print('enabled_for_enrollment: 2')
             user = enrollment.user
 
         course_masquerade = get_course_masquerade(user, course_key)
@@ -116,16 +126,20 @@ class ContentTypeGatingConfig(StackedConfigurationModel):
         if course_masquerade:
             if cls.has_full_access_role_in_masquerade(user, course_key, course_masquerade, student_masquerade,
                                                       user_partition):
+                print('enabled_for_enrollment: 3')
                 return False
         # When a request is not in a masquerade state the user variable represents the correct user.
         elif user and user.id and has_staff_roles(user, course_key):
+            print('enabled_for_enrollment: 4')
             return False
 
         # check if user is in holdback
         if user_variable_represents_correct_user and is_in_holdback(user, enrollment):
+            print('enabled_for_enrollment: 5')
             return False
 
         if not correct_modes_for_fbe(course_key, enrollment, user):
+            print('enabled_for_enrollment: 6')
             return False
 
         # enrollment might be None if the user isn't enrolled. In that case,
@@ -136,6 +150,8 @@ class ContentTypeGatingConfig(StackedConfigurationModel):
         else:
             target_datetime = enrollment.created
         current_config = cls.current(course_key=course_key)
+        print('course_key: {}'.format(course_key))
+        print('current_config: {}'.format(current_config))
         return current_config.enabled_as_of_datetime(target_datetime=target_datetime)
 
     @classmethod
@@ -175,6 +191,8 @@ class ContentTypeGatingConfig(StackedConfigurationModel):
         """
 
         # Explicitly cast this to bool, so that when self.enabled is None the method doesn't return None
+        print('self.enabled: {}'.format(self.enabled))
+        print('self.enabled_as_of <= target_datetime: {}'.format(self.enabled_as_of <= target_datetime))
         return bool(self.enabled and self.enabled_as_of <= target_datetime)
 
     def __str__(self):
