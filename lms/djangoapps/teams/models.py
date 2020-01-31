@@ -197,7 +197,7 @@ class CourseTeam(models.Model):
         """Adds the given user to the CourseTeam."""
         if not CourseEnrollment.is_enrolled(user, self.course_id):
             raise NotEnrolledInCourseForTeam
-        if CourseTeamMembership.user_in_team_for_course(user, self.course_id):
+        if CourseTeamMembership.user_in_team_set_for_course(user, self.course_id, self.topic_id):
             raise AlreadyOnTeamInCourse
         return CourseTeamMembership.objects.create(
             user=user,
@@ -318,6 +318,22 @@ class CourseTeamMembership(models.Model):
             False if not
         """
         return cls.objects.filter(user=user, team__course_id=course_id).exists()
+
+    @classmethod
+    def user_in_team_set_for_course(cls, user, course_id, topic_id):
+        """
+        Checks whether or not a user is already in a team in the given course.
+
+        Args:
+            user: the user that we want to query on
+            course_id: the course_id of the course we're interested in
+            teamset_id: the teamset_id for the teamset we're interested in
+
+        Returns:
+            True if the user is on a team in the teamset in the course already
+            False if not
+        """
+        return cls.objects.filter(user=user, team__course_id=course_id, team__topic_id=topic_id).exists()
 
     @classmethod
     def update_last_activity(cls, user, discussion_topic_id):

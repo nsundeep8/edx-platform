@@ -1459,11 +1459,10 @@ class TestCreateMembershipAPI(EventTestMixin, TeamAPITestCase):
 
     def test_join_second_team_in_course(self):
         response = self.post_create_membership(
-            400,
+            200,
             self.build_membership_data('student_enrolled_both_courses_other_team', self.solar_team),
             user='student_enrolled_both_courses_other_team'
         )
-        self.assertIn('already a member', json.loads(response.content.decode('utf-8'))['developer_message'])
 
     @ddt.data('staff', 'course_staff')
     def test_not_enrolled_in_team_course(self, user):
@@ -1676,7 +1675,7 @@ class TestBulkMembershipManagement(TeamAPITestCase):
     deny_username = 'student_enrolled'
 
     @ddt.data(
-        ('GET', good_course_id, deny_username, 403),
+        ('GET', good_course_id, deny_username, 200),
         ('GET', fake_course_id, allow_username, 404),
         ('GET', fake_course_id, deny_username, 404),
         ('POST', good_course_id, allow_username, 501),  # TODO MST-31
