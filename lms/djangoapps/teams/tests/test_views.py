@@ -1716,8 +1716,10 @@ class TestBulkMembershipManagement(TeamAPITestCase):
         csv_content += 'a_user, masters, team wind power'
         csv_file = SimpleUploadedFile('test_file.csv', csv_content.encode('utf8'), content_type='text/csv')
         self.client.login(username=self.users['course_staff'].username, password=self.users['course_staff'].password)
-        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]), 201, method='post',
-                       data={'csv': csv_file}, user='staff')
+        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]),
+                       201, method='post',
+                       data={'csv': csv_file}, user='staff'
+                       )
 
     def test_upload_invalid_teamset(self):
         self.create_and_enroll_student(username='a_user')
@@ -1725,16 +1727,20 @@ class TestBulkMembershipManagement(TeamAPITestCase):
         csv_content += 'a_user, masters, team wind power'
         csv_file = SimpleUploadedFile('test_file.csv', csv_content.encode('utf8'), content_type='text/csv')
         self.client.login(username=self.users['course_staff'].username, password=self.users['course_staff'].password)
-        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]), 400, method='post',
-                       data={'csv': csv_file}, user='staff')
+        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]),
+                       400, method='post',
+                       data={'csv': csv_file}, user='staff'
+                       )
 
     def test_upload_assign_user_twice_to_same_teamset(self):
         csv_content = 'user,mode,topic_0' + '\n'
         csv_content += 'student_enrolled, masters, team wind power'
         csv_file = SimpleUploadedFile('test_file.csv', csv_content.encode('utf8'), content_type='text/csv')
         self.client.login(username=self.users['course_staff'].username, password=self.users['course_staff'].password)
-        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]), 400, method='post',
-                       data={'csv': csv_file}, user='staff')
+        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]),
+                       400, method='post',
+                       data={'csv': csv_file}, user='staff'
+                       )
 
     def test_upload_assign_one_user_to_different_teamsets(self):
         self.create_and_enroll_student(username='a_user')
@@ -1746,13 +1752,17 @@ class TestBulkMembershipManagement(TeamAPITestCase):
         csv_content += 'c_user, masters,,,team 3'
         csv_file = SimpleUploadedFile('test_file.csv', csv_content.encode('utf8'), content_type='text/csv')
         self.client.login(username=self.users['course_staff'].username, password=self.users['course_staff'].password)
-        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]), 201, method='post',
-                       data={'csv': csv_file}, user='staff')
+        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]),
+                       201, method='post',
+                       data={'csv': csv_file}, user='staff'
+                       )
 
     def test_upload_non_existing_user(self):
         csv_content = 'user,mode,topic_0' + '\n'
         csv_content += 'missing_user, masters, team wind power'
         csv_file = SimpleUploadedFile('test_file.csv', csv_content.encode('utf8'), content_type='text/csv')
         self.client.login(username=self.users['course_staff'].username, password=self.users['course_staff'].password)
-        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]), 400, method='post',
-                       data={'csv': csv_file}, user='staff')
+        self.make_call(reverse('team_membership_bulk_management', args=[self.good_course_id]),
+                       400, method='post',
+                       data={'csv': csv_file}, user='staff'
+                       )

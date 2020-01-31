@@ -8,7 +8,6 @@ from student.models import CourseEnrollment
 from xmodule.modulestore.django import modulestore
 
 from lms.djangoapps.teams.models import CourseTeam, CourseTeamMembership
-from .errors import AlreadyOnTeamInCourse
 from .utils import emit_team_event
 
 
@@ -74,12 +73,12 @@ class TeamMembershipImportManager(object):
                 user = self.get_user(username)
                 if user is None:
                     continue
-                if self.validate_user_enrolled_in_course(user) is False:
+                if not self.validate_user_enrolled_in_course(user):
                     row['user'] = None
                     continue
                 row['user'] = user
 
-                if self.validate_user_to_team(row) is False:
+                if not self.validate_user_assignment_to_team_and_teamset(row):
                     return False
                 row_dictionaries.append(row)
 
@@ -125,7 +124,7 @@ class TeamMembershipImportManager(object):
 
         return True
 
-    def validate_user_to_team(self, row):
+    def validate_user_assignment_to_team_and_teamset(self, row):
         """
         Validates a user entry relative to an existing team.
         row is a dictionary where key is column name and value is the row value
@@ -140,11 +139,13 @@ class TeamMembershipImportManager(object):
             try:
                 # checks for a team inside a specific team set. This way team names can be duplicated across
                 # teamsets
-                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id)
+                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id, course_id=self.course.id)
             except CourseTeam.DoesNotExist:
                 # if a team doesn't exists, the validation doesn't apply to it.
                 all_teamset_user_ids = self.user_ids_by_teamset_id[teamset_id]
-                error_message = 'User {} is already on a teamset'.format(user)
+                error_message = 'The user {0} is already a member of a team inside teamset {1} in this course.'.format(
+                    user.username, teamset_id
+                )
                 if user.id in all_teamset_user_ids and self.add_error_and_check_if_max_exceeded(error_message):
                     return False
                 else:
@@ -187,7 +188,7 @@ class TeamMembershipImportManager(object):
             try:
                 # checks for a team inside a specific team set. This way team names can be duplicated across
                 # teamsets
-                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id)
+                team = CourseTeam.objects.get(name=team_name, topic_id=teamset_id, course_id=self.course.id)
             except CourseTeam.DoesNotExist:
                 team = CourseTeam.create(
                     name=team_name,
@@ -196,23 +197,16 @@ class TeamMembershipImportManager(object):
                     topic_id=teamset_id
                 )
                 team.save()
-            try:
-                team.add_user(user)
-                emit_team_event(
-                    'edx.team.learner_added',
-                    team.course_id,
-                    {
-                        'team_id': team.team_id,
-                        'user_id': user.id,
-                        'add_method': 'added_by_another_user'
-                    }
-                )
-            except AlreadyOnTeamInCourse:
-                if self.add_error_and_check_if_max_exceeded(
-                    'The user ' + user.username + ' is already a member of a team inside teamset '
-                    + team.topic_id + ' in this course.'
-                ):
-                    return False
+            team.add_user(user)
+            emit_team_event(
+                'edx.team.learner_added',
+                team.course_id,
+                {
+                    'team_id': team.team_id,
+                    'user_id': user.id,
+                    'add_method': 'team_csv_import'
+                }
+            )
             self.number_of_record_added += 1
 
     def get_user(self, user_name):
