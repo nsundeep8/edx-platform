@@ -4,20 +4,27 @@ Course API Views
 
 import json
 
+from django.conf import settings
+from django.urls import reverse
+
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 
 from lms.djangoapps.course_api.api import course_detail
+from lms.djangoapps.courseware.courses import allow_public_access
 from lms.djangoapps.courseware.module_render import get_module_by_usage_id
+from student.models import CourseEnrollment
+
 from openedx.core.lib.api.view_utils import DeveloperErrorViewMixin, view_auth_classes
+from xmodule.course_module import COURSE_VISIBILITY_PUBLIC
 
 from .serializers import CourseInfoSerializer
 
 
-@view_auth_classes(is_authenticated=True)
-class CoursewareInformation(DeveloperErrorViewMixin, RetrieveAPIView):
+class CoursewareInformation(RetrieveAPIView):
     """
     **Use Cases**
 
@@ -80,11 +87,31 @@ class CoursewareInformation(DeveloperErrorViewMixin, RetrieveAPIView):
         Return the requested course object, if the user has appropriate
         permissions.
         """
-        return course_detail(
+
+        overview = course_detail(
             self.request,
             self.request.user.username,
             CourseKey.from_string(self.kwargs['course_key_string']),
         )
+        if self.request.user.is_anonymous:
+            mode = None
+            is_active = False
+        else:
+            mode, is_active = CourseEnrollment.enrollment_mode_for_user(
+                overview.effective_user,
+                overview.id
+            )
+
+        overview.enrollment = {'mode': mode, 'is_active': is_active}
+        if not is_active:
+            if (self.request.user.is_anonymous and not allow_public_access(overview, [COURSE_VISIBILITY_PUBLIC])) \
+                or not self.request.user.is_anonymous:
+                error = {
+                    'code': 'not_enrolled',
+                    'redirect': '{}{}'.format(settings.LMS_ROOT_URL, reverse('course_root', kwargs={'course_id': overview.id}))
+                }
+                raise PermissionDenied(error)
+        return overview
 
     def get_serializer_context(self):
         """
@@ -95,7 +122,6 @@ class CoursewareInformation(DeveloperErrorViewMixin, RetrieveAPIView):
         return context
 
 
-@view_auth_classes(is_authenticated=True)
 class SequenceMetadata(DeveloperErrorViewMixin, APIView):
     """
     **Use Cases**
