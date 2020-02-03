@@ -158,30 +158,21 @@ class StackedConfigurationModel(ConfigurationModel):
         """
         cache_key_name = cls.cache_key_name(site, org, org_course, course_key)
         cached = cache.get(cache_key_name)
-        print('current: 1')
-        # if cached is not None:
-        #     print('current: 2')
-        #     return cached
+        if cached is not None:
+            return cached
 
         # Raise an error if more than one of site/org/course are specified simultaneously.
         if len([arg for arg in [site, org, org_course, course_key] if arg is not None]) > 1:
-            print('current: 3')
             raise ValueError("Only one of site, org, org_course, and course can be specified")
 
         if org_course is None and course_key is not None:
-            print('current: 4')
             org_course = cls._org_course_from_course_key(course_key)
-            print('org_course: {}'.format(org_course))
 
         if org is None and org_course is not None:
-            print('current: 5')
             org = cls._org_from_org_course(org_course)
 
         if site is None and org is not None:
-            print('current: 6')
             site = cls._site_from_org(org)
-        print('Site: {}'.format(site))
-        print("course_key: {}".format(course_key))
 
         stackable_fields = [cls._meta.get_field(field_name) for field_name in cls.STACKABLE_FIELDS]
         field_defaults = {
@@ -197,11 +188,6 @@ class StackedConfigurationModel(ConfigurationModel):
         org_course_override_q = Q(site=None, org=None, org_course=org_course, course_id=None)
         course_override_q = Q(site=None, org=None, org_course=None, course_id=course_key)
 
-        for o in cls.objects.current_set():
-            print('o.site {}'.format(o.site))
-            print('o.org_course {}'.format(o.org_course))
-            print('o.course_id {}'.format(o.course_id))
-
         overrides = cls.objects.current_set().filter(
             global_override_q |
             site_override_q |
@@ -209,7 +195,6 @@ class StackedConfigurationModel(ConfigurationModel):
             org_course_override_q |
             course_override_q
         )
-        print('overrides: {}'.format(overrides))
 
         provenances = defaultdict(lambda: Provenance.default)
         # We are sorting in python to avoid doing a filesort in the database for
@@ -247,7 +232,6 @@ class StackedConfigurationModel(ConfigurationModel):
                         provenances[field.name] = Provenance.global_
 
         current = cls(**values)
-        print('current.id: {}'.format(current.id))
         current.provenances = {field.name: provenances[field.name] for field in stackable_fields}  # pylint: disable=attribute-defined-outside-init
         cache.set(cache_key_name, current, cls.cache_timeout)
         return current

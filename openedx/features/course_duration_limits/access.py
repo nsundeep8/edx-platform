@@ -148,22 +148,18 @@ def get_date_string():
         data-datetime="{formatted_date}" data-language="{language}">{formatted_date_localized}</span>'
 
 
-# TODO: Jeff
 def generate_course_expired_message(user, course):
     """
     Generate the message for the user course expiration date if it exists.
     """
     if not CourseDurationLimitConfig.enabled_for_enrollment(user=user, course_key=course.id):
-        print('1')
         return
 
     expiration_date = get_user_course_expiration_date(user, course)
     if not expiration_date:
-        print('2')
         return
 
     if is_masquerading_as_specific_student(user, course.id) and timezone.now() > expiration_date:
-        print('3')
         upgrade_message = _('This learner does not have access to this course. '
                             u'Their access expired on {expiration_date}.')
         return HTML(upgrade_message).format(
