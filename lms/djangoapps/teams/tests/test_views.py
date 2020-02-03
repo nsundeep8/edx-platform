@@ -1458,7 +1458,7 @@ class TestCreateMembershipAPI(EventTestMixin, TeamAPITestCase):
         self.assertIn('already a member', json.loads(response.content.decode('utf-8'))['developer_message'])
 
     def test_join_second_team_in_course(self):
-        response = self.post_create_membership(
+        self.post_create_membership(
             200,
             self.build_membership_data('student_enrolled_both_courses_other_team', self.solar_team),
             user='student_enrolled_both_courses_other_team'
