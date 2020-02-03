@@ -1,24 +1,22 @@
 .date-wrapper {
     @extend .content;
+    font-family: $helvetica;
 
     .date-title {
-        margin-bottom: ($baseline*0.75);
-        padding-bottom: 0;
+        color: #414141;
+        font-weight: 500;
+        margin-bottom: 1em;
+        padding-bottom: 1em;
         border-bottom: 0;
     }
 
 
     .timeline-item {
-        border-left: solid 1px $darkGrey;
-        color: $darkGrey;
+        border-left: solid 1px #2d323e;
+        color: #2d323e;
         position: relative;
         padding-left: 1em;
         padding-bottom: 1em;
-
-        &.active {
-            color: $black;
-            border-left: solid 1px $black;
-        }
 
         &:last-of-type {
             border-left: none;
@@ -30,20 +28,21 @@
         height: 7px;
         position: absolute;
         left: -4px;
-        background-color: $darkGrey;
+        background-color: #2d323e;
         border-radius: 50%;
 
         &.active {
-            width: 11px;
-            height: 11px;
-            left: -6px;
-            background-color: $black;
+            width: 13px;
+            height: 13px;
+            left: -7px;
+            background-color: #2d323e;
         }
     }
 
     .date-content {
         display: flex;
         flex-wrap: wrap;
+        margin-bottom: 1.5em;
 
         div {
             flex: 100% 0;
@@ -52,28 +51,22 @@
 
     .timeline-date {
         @include font-size(16);
-
         font-weight: bold;
-        margin-bottom: .25em;
+        margin-bottom: .75em;
     }
 
     .timeline-title {
         @include font-size(14);
-
         font-weight: bold;
+        margin-bottom: .5em;
+
     }
 
     .timeline-description {
         @include font-size(14);
 
-        margin-bottom: .5em;
-    }
-
-    .upgrade-message {
-        color: $green;
-        font-weight: bold;
         a {
-            color: $green;
+            color: #2d323e;
             text-decoration: underline;
         }
     }
@@ -81,25 +74,28 @@
     .pill {
         @include font-size(12);
 
-        padding-left: .5em;
-        padding-right: .5em;
-        padding-top: .1em;
-        padding-bottom: .2em;
+        padding-left: 1em;
+        padding-right: 1em;
+        padding-top: .25em;
+        padding-bottom: .25em;
         border-radius: 5px;
         margin-left: .25em;
         font-style: italic;
         font-weight: bold;
 
         &.due {
-            background-color: $yellow;
-            color: $black;
+            background-color: #ffdb87;
+            color: #2d323e;
         }
 
         &.verified {
-            background-color: $green;
+            background-color: #2d323e;
             color: $white;
         }
+
     }
 
-
+    .verified-icon {
+        padding-right: .5em;
+    }
 }

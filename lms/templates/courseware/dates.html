@@ -38,7 +38,7 @@ from openedx.core.djangolib.markup import HTML, Text
                                         <span class="pill due">${_("Due Today")}</span>
                                     % endif
                                     % if verified:
-                                        <span class="pill verified">${_("Verified Only")}</span>
+                                        <span class="pill verified"><span class="fa fa-lock verified-icon" aria-hidden="true"></span>${_("Verified Only")}</span>
                                     % endif
                                 % endif
                             </div>
@@ -48,11 +48,9 @@ from openedx.core.djangolib.markup import HTML, Text
                             <div class="timeline-description">
                                 ${block.description}
                                 % if verified and verified_upgrade_link:
-                                    ${Text(_('{span_open}{a_open}Upgrade{a_close} to a Verified Certificate{span_close} for full access.')).format(
-                                        span_open=HTML('<span class="upgrade-message">'),
+                                    ${Text(_('{a_open}Upgrade{a_close} to a Verified Certificate for full access.')).format(
                                         a_open=HTML('<a href={link}>'.format(link=verified_upgrade_link)),
                                         a_close=HTML('</a>'),
-                                        span_close=HTML('</span>')
                                     )}
                                 % endif
                             </div>
