@@ -24,6 +24,7 @@ from six.moves.urllib.parse import urljoin
 
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.theming.helpers import is_request_in_themed_site
+from openedx.core.lib.cache_utils import request_cached
 from xmodule.util.xmodule_django import get_current_request_hostname
 
 from . import Engines
@@ -31,6 +32,7 @@ from . import Engines
 log = logging.getLogger(__name__)
 
 
+@request_cached()
 def marketing_link(name):
     """Returns the correct URL for a link to the marketing site
     depending on if the marketing site is enabled
