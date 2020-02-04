@@ -4,7 +4,11 @@ var StaffDebug = (function() {
     /* global getCurrentUrl:true */
     var getURL = function(action) {
         var pathname = this.getCurrentUrl();
-        return pathname.substr(0, pathname.indexOf('/courseware')) + '/instructor/api/' + action;
+        var index = pathname.indexOf('/courseware');
+        if (index <= 0) {
+            index = pathname.indexOf('/', '/courses/'.length);
+        }
+        return pathname.substr(0, index) + '/instructor/api/' + action;
     };
 
     var sanitizeString = function(string) {
@@ -48,6 +52,7 @@ var StaffDebug = (function() {
                 var html = _.template('<p id="idash_msg" class="success">{text}</p>', {interpolate: /\{(.+?)\}/g})(
                 {text: text}
             );
+                // xss-lint: disable=javascript-jquery-html
                 $('#result_' + sanitizeString(action.locationName)).html(html);
             },
             error: function(request, status, error) {
@@ -66,6 +71,7 @@ var StaffDebug = (function() {
                 var html = _.template('<p id="idash_msg" class="error">{text}</p>', {interpolate: /\{(.+?)\}/g})(
                 {text: text}
             );
+                // xss-lint: disable=javascript-jquery-html
                 $('#result_' + sanitizeString(action.locationName)).html(html);
             },
             dataType: 'json'
