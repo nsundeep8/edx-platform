@@ -40,7 +40,6 @@ class TeamMembershipImportManager(object):
         self.user_ids_by_teamset_id = {}
         self.teamset_ids = []
         self.number_of_record_added = 0
-        # stores the course for which we are populating teams
         self.course = course
         self.max_errors = 0
         self.existing_course_team_memberships = {}
@@ -72,7 +71,7 @@ class TeamMembershipImportManager(object):
             username = row['user']
             if not username:
                 continue
-            if not self.check_for_duplicate_usernames_on_input(username, csv_usernames):
+            if not self.is_username_unique(username, csv_usernames):
                 return False
             csv_usernames.add(username)
             user = self.get_user(username)
@@ -151,7 +150,7 @@ class TeamMembershipImportManager(object):
 
         return True
 
-    def check_for_duplicate_usernames_on_input(self, username, usernames_found_so_far):
+    def is_username_unique(self, username, usernames_found_so_far):
         """
         Ensures that username exists only once in an input file
         """

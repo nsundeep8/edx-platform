@@ -87,6 +87,7 @@ def team_post_save_callback(sender, instance, **kwargs):  # pylint: disable=unus
                     six.text_type(getattr(instance, field))
                 )
                 truncated_fields['team_id'] = instance.team_id
+                truncated_fields['team_id'] = instance.team_id
                 truncated_fields['field'] = field
 
                 emit_team_event(
@@ -1385,13 +1386,12 @@ class MembershipBulkManagementView(GenericAPIView):
         inputfile_handle = request.FILES['csv']
         team_import_manager = TeamMembershipImportManager(self.course)
         team_import_manager.set_team_membership_from_csv(inputfile_handle)
-        if team_import_manager.import_succeeded is True:
+        if team_import_manager.import_succeeded:
             return Response(team_import_manager.number_of_record_added.__str__(), status=status.HTTP_201_CREATED)
         else:
-            return Response(
-                build_api_error(':'.join([e for e in team_import_manager.validation_errors])),
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({
+                'errors': team_import_manager.validation_errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     def check_access(self):
         """

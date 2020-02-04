@@ -426,7 +426,6 @@ class TeamAPITestCase(APITestCase, SharedModuleStoreTestCase):
             response = func(url, data=data, content_type=content_type)
         else:
             response = func(url, data=data)
-
         self.assertEqual(
             expected_status,
             response.status_code,
@@ -1460,7 +1459,7 @@ class TestCreateMembershipAPI(EventTestMixin, TeamAPITestCase):
 
     def test_join_second_team_in_course(self):
         """
-        New behavior allows the same student to be enrolled in multiple teams, as long as they belong to different
+        Behavior allows the same student to be enrolled in multiple teams, as long as they belong to different
         topics (teamsets)
         """
         self.post_create_membership(
