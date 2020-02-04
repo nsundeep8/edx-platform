@@ -38,8 +38,7 @@ class TeamMembershipImportManager(object):
         self.validation_errors = []
         self.teamset_ids = []
         self.user_ids_by_teamset_id = {}
-        self.teamset_ids = []
-        self.number_of_record_added = 0
+        self.number_of_records_added = 0
         self.course = course
         self.max_errors = 0
         self.existing_course_team_memberships = {}
@@ -111,21 +110,19 @@ class TeamMembershipImportManager(object):
 
     def validate_teamsets(self):
         """
-        Validates team set names. Returns true if there are no errors.
+        Validates team set ids. Returns true if there are no errors.
         The following conditions result in errors:
         Teamset does not exist
         Teamset id is duplicated
-        Also populates the teamset_names_list.
-        header_row is the list of teamset_ids
         """
-        teamset_ids = {ts.teamset_id for ts in self.course.teams_configuration.teamsets}
+        valid_teamset_ids = {ts.teamset_id for ts in self.course.teams_configuration.teamsets}
         dupe_set = set()
         for teamset_id in self.teamset_ids:
             if teamset_id in dupe_set:
                 self.validation_errors.append("Teamset with id " + teamset_id + " is duplicated.")
                 return False
             dupe_set.add(teamset_id)
-            if teamset_id not in teamset_ids:
+            if teamset_id not in valid_teamset_ids:
                 self.validation_errors.append("Teamset with id " + teamset_id + " does not exist.")
                 return False
         return True
@@ -241,7 +238,7 @@ class TeamMembershipImportManager(object):
                     'add_method': 'team_csv_import'
                 }
             )
-            self.number_of_record_added += 1
+            self.number_of_records_added += 1
 
     def get_user(self, user_name):
         """

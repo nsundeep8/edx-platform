@@ -1387,7 +1387,7 @@ class MembershipBulkManagementView(GenericAPIView):
         team_import_manager = TeamMembershipImportManager(self.course)
         team_import_manager.set_team_membership_from_csv(inputfile_handle)
         if team_import_manager.import_succeeded:
-            return Response(team_import_manager.number_of_record_added.__str__(), status=status.HTTP_201_CREATED)
+            return Response(str(team_import_manager.number_of_records_added), status=status.HTTP_201_CREATED)
         else:
             return Response({
                 'errors': team_import_manager.validation_errors
